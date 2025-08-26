@@ -1,46 +1,36 @@
 from ldap3 import Server, Connection, ALL, ALL_ATTRIBUTES
+import configparser
 
-LDAP_SERVER = "ldap://192.168.1.22:389"
-BASE_DN = "DC=alaklein,DC=local"
+#Load config attributes
+config = configparser.ConfigParser()
+config.read("ldap_config")
+LDAP_SERVER_IP = config["ldap"]["ldap_server"]
+LDAP_PORT = config["ldap"]["ldap_port"]
+LDAP_SERVER = f"ldap://{LDAP_SERVER_IP}:{LDAP_PORT}"
+BASE_DN = config["ldap"]["base_dn"]
+BIND_DN = config["ldap"]["bind_dn"]
+BIND_PASSWORD = config["ldap"]["bind_password"]
 
-def connect_with_bind_user(bind_dn, bind_password):
-    """Authenticate with the bind account DN"""
+def connect_with_bind_user():
     server = Server(LDAP_SERVER, get_info=ALL)
-    conn = Connection(server, user=bind_dn, password=bind_password, auto_bind=True)
-    print("Bind user authenticated")
+    conn = Connection(server, user=BIND_DN, password=BIND_PASSWORD, auto_bind=True)
+    print(f"Connected to {LDAP_SERVER}")
     return conn
 
-
 def get_user_by_sam(conn, samaccountname, attributes=None):
-    """
-    Search AD for a user by sAMAccountName.
-    conn         -> LDAP connection (already bound)
-    samaccountname -> username (e.g. jdoe)
-    attributes   -> list of attributes to fetch (default: all)
-    """
     search_filter = f"(sAMAccountName={samaccountname})"
     conn.search(
         search_base=BASE_DN,
         search_filter=search_filter,
         attributes=attributes or ALL_ATTRIBUTES
     )
+    return conn.entries[0] if conn.entries else None
 
-    if conn.entries:
-        return conn.entries[0]
+#main
+if __name__ == "__main__":
+    conn = connect_with_bind_user()
+    user = get_user_by_sam(conn, "ala.klein", attributes=["displayName", "mail", "memberOf"])
+    if user:
+        print("User found:", user)
     else:
-        return None
-
-
-# Example usage:
-bind_dn = "CN=ldap bind,OU=PythonAuth,DC=alaklein,DC=local"
-bind_password = "S3nh@123"
-
-conn = connect_with_bind_user(bind_dn, bind_password)
-
-# Now fetch multiple users
-for username in ["ala.klein"]:
-    user_entry = get_user_by_sam(conn, username, attributes=["displayName", "mail", "memberOf"])
-    if user_entry:
-        print(f"Found {username}: {user_entry.displayName}, {user_entry.mail}, {user_entry.memberOf}")
-    else:
-        print(f"User {username} not found")
+        print("User not found")
