@@ -1,5 +1,6 @@
 from ldap3 import Server, Connection, ALL, ALL_ATTRIBUTES
 import configparser
+import ssl
 
 #Load config attributes
 config = configparser.ConfigParser()
@@ -18,15 +19,12 @@ def connect_with_bind_user():
     print(f"Connected to {LDAP_SERVER}")
     return conn
 
-def get_user_by_sam(conn, attribute_mapping, attributes=None):
-    if LDAP_ATTRIBUTE_MAPPING == "sAMAccountName":
-        search_filter = f"(sAMAccountName={attribute_mapping})"
-    elif LDAP_ATTRIBUTE_MAPPING == "userPrincipalName":
-        search_filter = f"(userPrincipalName={attribute_mapping})"
-    print(search_filter)
+def get_user_by_attribute_mapping(conn, user, attributes=None):
+    attribute_mapping_filter = f"({LDAP_ATTRIBUTE_MAPPING}={user})"
+    print(attribute_mapping_filter)
     conn.search(
         search_base=BASE_DN,
-        search_filter=search_filter,
+        search_filter=attribute_mapping_filter,
         attributes=attributes or ALL_ATTRIBUTES
     )
     return conn.entries[0] if conn.entries else None
@@ -35,8 +33,10 @@ def get_user_by_sam(conn, attribute_mapping, attributes=None):
 if __name__ == "__main__":
     user = input("Insert the user info in the {} format:".format(LDAP_ATTRIBUTE_MAPPING))
     conn = connect_with_bind_user()
-    user = get_user_by_sam(conn, user, attributes=["displayName", "mail", "memberOf"])
-    if user:
-        print("User found:", user)
-    else:
-        print("User not found")
+    user = get_user_by_attribute_mapping(conn, user, attributes=["displayName", "mail", "memberOf"])
+if user:
+    print("User DN:", user.entry_dn)
+    print("Display Name:", user.displayName.value)
+    print("Email:", user.mail.value)
+else:
+    print("User not found")
