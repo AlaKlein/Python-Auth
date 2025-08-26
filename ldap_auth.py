@@ -10,6 +10,7 @@ LDAP_SERVER = f"ldap://{LDAP_SERVER_IP}:{LDAP_PORT}"
 BASE_DN = config["ldap"]["base_dn"]
 BIND_DN = config["ldap"]["bind_dn"]
 BIND_PASSWORD = config["ldap"]["bind_password"]
+LDAP_ATTRIBUTE_MAPPING = config["ldap"]["ldap_attribute_mapping"]
 
 def connect_with_bind_user():
     server = Server(LDAP_SERVER, get_info=ALL)
@@ -17,8 +18,12 @@ def connect_with_bind_user():
     print(f"Connected to {LDAP_SERVER}")
     return conn
 
-def get_user_by_sam(conn, samaccountname, attributes=None):
-    search_filter = f"(sAMAccountName={samaccountname})"
+def get_user_by_sam(conn, attribute_mapping, attributes=None):
+    if LDAP_ATTRIBUTE_MAPPING == "sAMAccountName":
+        search_filter = f"(sAMAccountName={attribute_mapping})"
+    elif LDAP_ATTRIBUTE_MAPPING == "userPrincipalName":
+        search_filter = f"(userPrincipalName={attribute_mapping})"
+    print(search_filter)
     conn.search(
         search_base=BASE_DN,
         search_filter=search_filter,
@@ -28,8 +33,9 @@ def get_user_by_sam(conn, samaccountname, attributes=None):
 
 #main
 if __name__ == "__main__":
+    user = input("Insert the user info in the {} format:".format(LDAP_ATTRIBUTE_MAPPING))
     conn = connect_with_bind_user()
-    user = get_user_by_sam(conn, "ala.klein", attributes=["displayName", "mail", "memberOf"])
+    user = get_user_by_sam(conn, user, attributes=["displayName", "mail", "memberOf"])
     if user:
         print("User found:", user)
     else:

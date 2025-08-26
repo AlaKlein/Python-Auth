@@ -4,3 +4,5 @@ ldap_port=389
 base_dn = DC=alaklein,DC=local
 bind_dn = CN=ldap bind,OU=PythonAuth,DC=alaklein,DC=local
 bind_password = S3nh@123
+#sAMAccountName/userPrincipalName
+ldap_attribute_mapping = sAMAccountName 
